@@ -4,6 +4,7 @@
 Properties
 {
     _MainTex ("Main Texture", 2D) = "" {}
+	_LineIntensity ("Line Intensity", Range(0, 10)) = 1.0
 }
 
 SubShader
@@ -96,6 +97,7 @@ Pass
 	sampler2D _MainTex;
 	sampler2D _KinectDepthTexture;
 	float4 _KinectDepthTexture_TexelSize;
+	float _LineIntensity;
 
 	float GetDepth(float2 uv)
 	{
@@ -164,7 +166,7 @@ Pass
         GBufferOut o;
 		o.diffuse = normal;
         o.specular = float4(0.0, 0.0, 0.0, 0.0);
-		o.emission = float4(tex2D(_MainTex, float2(w, 0)).r, tex2D(_MainTex, float2(v, 0)).r, tex2D(_MainTex, float2(u, 0)).r * 5, 1.0) * 10;
+		o.emission = float4(tex2D(_MainTex, float2(w, 0)).r, tex2D(_MainTex, float2(v, 0)).r, tex2D(_MainTex, float2(u, 0)).r * 5, 1.0) * _LineIntensity;
 		o.depth = depth;
 		o.normal = normal;
 

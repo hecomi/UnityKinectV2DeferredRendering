@@ -2,7 +2,7 @@ KinectV2 Deferred Renderering
 =============================
 How to play
 -----------
-Download Kinect for Unity package from official site.
+Download and import Kinect for Unity package from official site, then start `Test` scene in `Scenes` directory.
 - https://developer.microsoft.com/ja-jp/windows/kinect/tools
 
 License
