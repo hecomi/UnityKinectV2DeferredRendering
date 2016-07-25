@@ -4,7 +4,8 @@
 Properties
 {
     _MainTex ("Main Texture", 2D) = "" {}
-	_LineIntensity ("Line Intensity", Range(0, 10)) = 1.0
+	_LineIntensity ("Line Intensity", Range(0, 30)) = 1.0
+	_LineResolution ("Line Resolution", Range(0, 100)) = 10.0
 }
 
 SubShader
@@ -12,48 +13,6 @@ SubShader
 
 Tags { "RenderType" = "Opaque" "DisableBatching" = "True" "Queue" = "Geometry+10" }
 Cull Off
-
-CGINCLUDE
-
-#include "UnityCG.cginc"
-
-float sphere(float3 pos, float radius)
-{
-    return length(pos) - radius;
-}
-
-float DistanceFunc(float3 pos)
-{
-    return sphere(pos, 1.f);
-}
-
-float3 GetCameraPosition()    { return _WorldSpaceCameraPos;      }
-float3 GetCameraForward()     { return -UNITY_MATRIX_V[2].xyz;    }
-float3 GetCameraUp()          { return UNITY_MATRIX_V[1].xyz;     }
-float3 GetCameraRight()       { return UNITY_MATRIX_V[0].xyz;     }
-float  GetCameraFocalLength() { return abs(UNITY_MATRIX_P[1][1]); }
-float  GetCameraMaxDistance() { return _ProjectionParams.z - _ProjectionParams.y; }
-
-float GetDepth(float3 pos)
-{
-    float4 vpPos = mul(UNITY_MATRIX_VP, float4(pos, 1.0));
-#if defined(SHADER_TARGET_GLSL)
-    return (vpPos.z / vpPos.w) * 0.5 + 0.5;
-#else 
-    return vpPos.z / vpPos.w;
-#endif 
-}
-
-float3 GetNormal(float3 pos)
-{
-    const float d = 0.001;
-    return 0.5 + 0.5 * normalize(float3(
-        DistanceFunc(pos + float3(  d, 0.0, 0.0)) - DistanceFunc(pos + float3( -d, 0.0, 0.0)),
-        DistanceFunc(pos + float3(0.0,   d, 0.0)) - DistanceFunc(pos + float3(0.0,  -d, 0.0)),
-        DistanceFunc(pos + float3(0.0, 0.0,   d)) - DistanceFunc(pos + float3(0.0, 0.0,  -d))));
-}
-
-ENDCG
 
 Pass
 {
@@ -98,6 +57,7 @@ Pass
 	sampler2D _KinectDepthTexture;
 	float4 _KinectDepthTexture_TexelSize;
 	float _LineIntensity;
+	float _LineResolution;
 
 	float GetDepth(float2 uv)
 	{
@@ -153,20 +113,25 @@ Pass
     {
 		float2 uv = i.screenPos.xy / i.screenPos.w;
 
-		float depth = GetDepthForBuffer(uv);
-		if (depth < 0.3) discard;
+		float rawDepth = GetDepth(uv);
+		if (rawDepth < 0.2 || rawDepth > 8) discard;
 
+		float depth = GetDepthForBuffer(uv);
 		float3 pos = GetPosition(uv);
 		float4 normal = float4(GetNormal(uv), 1.0);
 
-		float u = fmod(pos.x, 1.0) * 50;
-		float v = fmod(pos.y, 1.0) * 50;
-		float w = fmod(pos.z, 1.0) * 50;
+		float u = fmod(pos.x, 1.0) * _LineResolution;
+		float v = fmod(pos.y, 1.0) * _LineResolution;
+		float w = fmod(pos.z, 1.0) * _LineResolution;
 
         GBufferOut o;
 		o.diffuse = normal;
         o.specular = float4(0.0, 0.0, 0.0, 0.0);
-		o.emission = float4(tex2D(_MainTex, float2(w, 0)).r, tex2D(_MainTex, float2(v, 0)).r, tex2D(_MainTex, float2(u, 0)).r * 5, 1.0) * _LineIntensity;
+		o.emission = _LineIntensity * float4(
+			tex2D(_MainTex, float2(w, 0)).r, 
+			tex2D(_MainTex, float2(v, 0)).r, 
+			tex2D(_MainTex, float2(u, 0)).r, 
+			1.0);
 		o.depth = depth;
 		o.normal = normal;
 
